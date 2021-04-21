@@ -26,11 +26,16 @@ provider:
   lambdaHashingVersion: 20201221
 
 # you can overwrite defaults here
-#  stage: dev
-#  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'ca-central-1'}
 
 # you can add statements to the Lambda function's IAM Role here
-#  iamRoleStatements:
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Scan
+        - dynamodb:PutItem
+      Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.GROUPS_TABLE}
 #    - Effect: "Allow"
 #      Action:
 #        - "s3:ListBucket"
@@ -46,8 +51,8 @@ provider:
 #            - "/*"
 
 # you can define service wide environment variables here
-#  environment:
-#    variable1: value1
+  environment:
+    GROUPS_TABLE: Groups-${self:provider.stage}
 
 package:
   patterns:
@@ -67,6 +72,20 @@ functions:
       - httpApi:
           path: /world
           method: get
+  GetGroups:
+    handler: bin/getGroups
+    events:
+      - http:
+          method: get
+          path: groups
+          cors: true
+  CreateGroup:
+    handler: bin/createGroup
+    events:
+      - http:
+          method: post
+          path: groups
+          cors: true # properly reply to cores preFligh Request
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details
@@ -109,8 +128,19 @@ functions:
 #      variable2: value2
 
 # you can add CloudFormation resource templates here
-#resources:
-#  Resources:
+resources:
+  Resources:
+    GroupsDynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:provider.environment.GROUPS_TABLE}
 #    NewResource:
 #      Type: AWS::S3::Bucket
 #      Properties:
