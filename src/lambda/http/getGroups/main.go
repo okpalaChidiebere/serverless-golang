@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -38,7 +38,7 @@ func init() {
 }
 
 func GetGroupsHandler(ctx context.Context) (Response, error) {
-	fmt.Println("GetGroups")
+	log.Println("GetGroups")
 	var buf bytes.Buffer
 
 	// Read from DynamoDB
@@ -52,8 +52,8 @@ func GetGroupsHandler(ctx context.Context) (Response, error) {
 	for _, i := range result.Items {
 		group := Group{}
 		if err := dynamodbattribute.UnmarshalMap(i, &group); err != nil {
-			fmt.Println("Failed to unmarshal")
-			fmt.Println(err)
+			log.Println("Failed to unmarshal")
+			log.Println(err)
 		}
 		groups = append(groups, group)
 	}

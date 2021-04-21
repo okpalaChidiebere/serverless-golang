@@ -40,8 +40,8 @@ func init() {
 }
 
 func createGroupHandler(ctx context.Context, req Request) (Response, error) {
-	//fmt.Println("Processing Event: ", req)
-	log.Println("Processing Event: ", req)
+	e, _ := json.MarshalIndent(req, "", " ")
+	log.Printf("Processing Event: %s", e)
 
 	var buf bytes.Buffer
 	id := uuid.Must(uuid.NewV4(), nil).String() //create a new id
