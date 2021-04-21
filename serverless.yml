@@ -30,12 +30,14 @@ provider:
   region: ${opt:region, 'ca-central-1'}
 
 # you can add statements to the Lambda function's IAM Role here
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - dynamodb:Scan
-        - dynamodb:PutItem
-      Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.GROUPS_TABLE}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Scan
+            - dynamodb:PutItem
+          Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.GROUPS_TABLE}
 #    - Effect: "Allow"
 #      Action:
 #        - "s3:ListBucket"
