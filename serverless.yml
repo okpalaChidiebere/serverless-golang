@@ -37,7 +37,12 @@ provider:
           Action:
             - dynamodb:Scan
             - dynamodb:PutItem
+            - dynamodb:GetItem
           Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.GROUPS_TABLE}
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+          Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.IMAGES_TABLE}
 #    - Effect: "Allow"
 #      Action:
 #        - "s3:ListBucket"
@@ -55,6 +60,7 @@ provider:
 # you can define service wide environment variables here
   environment:
     GROUPS_TABLE: Groups-${self:provider.stage}
+    IMAGES_TABLE: Images-${self:provider.stage}
 
 package:
   patterns:
@@ -92,6 +98,13 @@ functions:
             # schema used to validae incoming request
             schema:
               application/json: ${file(models/create-group-request.json)} # we read the definition of the schema from the models folder then the json file name
+  GetImages:
+    handler: bin/getImages
+    events:
+      - http:
+          method: get
+          path: groups/{groupId}/images
+          cors: true
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details
@@ -147,6 +160,22 @@ resources:
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
         TableName: ${self:provider.environment.GROUPS_TABLE}
+
+    ImagesDynamoDBTable:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: groupId
+            AttributeType: S
+          - AttributeName: timestamp
+            AttributeType: S
+        KeySchema:
+          - AttributeName: groupId
+            KeyType: HASH
+          - AttributeName: timestamp
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:provider.environment.IMAGES_TABLE}
 #    NewResource:
 #      Type: AWS::S3::Bucket
 #      Properties:
