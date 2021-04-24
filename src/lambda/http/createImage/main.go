@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/aws/aws-sdk-go/service/s3"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -24,21 +25,26 @@ type Image struct {
 	GroupId   string `json:"groupId"`
 	Title     string `json:"title"`
 	Timestamp string `json:"timestamp"`
+	ImageUrl  string `json:"imageUrl"`
 }
 
 type createImageResponse struct {
-	Image Image `json:"newItem"`
+	Image     Image  `json:"newItem"`
+	UploadUrl string `json:"uploadUrl"`
 }
 
 var (
 	ddb *dynamodb.DynamoDB
+	s3s *s3.S3
 	gTb = aws.String(os.Getenv("GROUPS_TABLE"))
 	iTb = aws.String(os.Getenv("IMAGES_TABLE"))
+	bn  = os.Getenv("IMAGES_S3_BUCKET")
 )
 
 func init() {
 	svc := session.Must(session.NewSession()) // Use aws sdk to connect to dynamoDB
 	ddb = dynamodb.New(svc)                   // Create DynamoDB client
+	s3s = s3.New(svc)                         // Create S3 service client
 }
 
 func createImageHandler(req Request) (Response, error) {
@@ -79,8 +85,12 @@ func createImageHandler(req Request) (Response, error) {
 	go createImage(gId, imageId, req, nIc)
 
 	nIt := <-nIc
+
+	url, _ := getUploadUrl(imageId)
+
 	body, _ := json.Marshal(&createImageResponse{
 		nIt,
+		url,
 	})
 	json.HTMLEscape(&buf, body)
 
@@ -123,6 +133,7 @@ func createImage(groupId string, imageId string, event Request, c chan Image) {
 		ImageId:   imageId,
 		Timestamp: time.Now().String(),
 		GroupId:   groupId,
+		ImageUrl:  "https://" + bn + ".s3.amazonaws.com/" + imageId,
 	}
 
 	// Parse request body
@@ -143,6 +154,18 @@ func createImage(groupId string, imageId string, event Request, c chan Image) {
 	}
 
 	c <- *newItem
+}
+
+func getUploadUrl(imageId string) (string, error) {
+	//More on PutObject here https://docs.aws.amazon.com/sdk-for-go/api/service/s3/#S3.PutObjectRequest
+	req, _ := s3s.PutObjectRequest(&s3.PutObjectInput{
+		Bucket: aws.String(bn),
+		Key:    aws.String(imageId),
+	})
+
+	urlStr, err := req.Presign(5 * time.Minute)
+
+	return urlStr, err
 }
 
 func main() {
