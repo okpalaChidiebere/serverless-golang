@@ -67,6 +67,7 @@ provider:
     GROUPS_TABLE: Groups-${self:provider.stage}
     IMAGES_TABLE: Images-${self:provider.stage}
     IMAGE_ID_INDEX: ImageIdIndex
+    IMAGES_S3_BUCKET: serverless-udagram-images-${self:provider.stage}
 
 package:
   patterns:
@@ -214,10 +215,38 @@ resources:
               KeyType: HASH
             Projection:
               ProjectionType: ALL #we what all the attributes to be copied over from the original table to this index table
-#    NewResource:
-#      Type: AWS::S3::Bucket
-#      Properties:
-#        BucketName: my-new-bucket
+    AttachmentsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.IMAGES_S3_BUCKET}
+        CorsConfiguration: #it allows for our bucket to set the right cors headers when a request is sent to our S3 Bucket
+          CorsRules:
+            -
+              AllowedOrigins:
+                - '*'
+              AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD
+              MaxAge: 3000
+    # this policy allows anybody to read Objects from our S3 bucket
+    BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        PolicyDocument:
+          Id: MyPolicy
+          Version: "2012-10-17"
+          Statement:
+            - Sid: PublicReadForGetBucketObjects
+              Effect: Allow
+              Principal: '*' # anyone
+              Action: 's3:GetObject'
+              Resource: 'arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*'
+        Bucket: !Ref AttachmentsBucket #we specify that our "AttachmentsBucket" has this policy
 #  Outputs:
 #     NewOutput:
 #       Description: "Description for the output"
