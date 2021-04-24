@@ -42,6 +42,7 @@ provider:
         - Effect: Allow
           Action:
             - dynamodb:Query
+            - dynamodb:PutItem
           Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.IMAGES_TABLE}
         - Effect: Allow
           Action:
@@ -101,8 +102,11 @@ functions:
           cors: true # properly reply to cores preFligh Request
           request:
             # schema used to validae incoming request
-            schema:
-              application/json: ${file(models/create-group-request.json)} # we read the definition of the schema from the models folder then the json file name
+            schemas:
+              application/json: 
+                schema: ${file(models/create-group-request.json)} # we read the definition of the schema from the models folder then the json file name
+                name: GroupRequest
+                description: Create a new group
   GetImages:
     handler: bin/getImages
     events:
@@ -117,6 +121,19 @@ functions:
           method: get
           path: images/{imageId}
           cors: true
+  CreateImage:
+    handler: bin/createImage
+    events:
+      - http:
+          method: post
+          path: groups/{groupId}/images
+          cors: true
+          request:
+            schemas:
+              application/json: 
+                schema: ${file(models/create-image-request.json)}
+                name: ImageRequest
+                description: Create a new image
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details
