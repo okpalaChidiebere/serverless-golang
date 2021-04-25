@@ -141,6 +141,13 @@ functions:
                 schema: ${file(models/create-image-request.json)}
                 name: ImageRequest
                 description: Create a new image
+  SendUploadNotifications:
+    handler: bin/sendNotifications
+    events:
+      - s3:
+          bucket: ${self:provider.environment.IMAGES_S3_BUCKET}
+          event: s3:ObjectCreated:* #we run this function when a file is uploaded
+          existing: true # since we attach this Lambda function to existing S3 bucket, this proptert is NEEDED. More S3 event config here https://www.serverless.com/framework/docs/providers/aws/events/s3/
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details

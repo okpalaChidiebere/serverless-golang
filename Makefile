@@ -9,6 +9,7 @@ build: gomodgen
 	env GOOS=linux go build -ldflags="-s -w" -o bin/getImages src/lambda/http/getImages/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/getImage src/lambda/http/getImage/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/createImage src/lambda/http/createImage/main.go
+	env GOOS=linux go build -ldflags="-s -w" -o bin/sendNotifications src/lambda/s3/sendNotifications/main.go
 
 clean:
 	rm -rf ./bin ./vendor go.sum
