@@ -54,6 +54,12 @@ provider:
             - s3:PutObject
             - s3:GetObject
           Resource: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*
+        - Effect: Allow
+          Action:
+            - dynamodb:Scan
+            - dynamodb:PutItem
+            - dynamodb:DeleteItem
+          Resource: arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.CONNECTIONS_TABLE}
 #    - Effect: "Allow"
 #      Action:
 #        - "s3:ListBucket"
@@ -74,6 +80,7 @@ provider:
     IMAGES_TABLE: Images-${self:provider.stage}
     IMAGE_ID_INDEX: ImageIdIndex
     IMAGES_S3_BUCKET: sls-udagram-images-${self:provider.stage}
+    CONNECTIONS_TABLE: Connections-${self:provider.stage} #this table will sotre our list of connections
 
 package:
   patterns:
@@ -148,6 +155,16 @@ functions:
           bucket: ${self:provider.environment.IMAGES_S3_BUCKET}
           event: s3:ObjectCreated:* #we run this function when a file is uploaded
           existing: true # since we attach this Lambda function to existing S3 bucket, this proptert is NEEDED. More S3 event config here https://www.serverless.com/framework/docs/providers/aws/events/s3/
+  ConnectHandler:
+    handler: bin/connect
+    events:
+      - websocket:
+          route: $connect
+  DisconnectHandler:
+    handler: bin/disconnect
+    events:
+      - websocket:
+          route: $disconnect
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details
@@ -228,6 +245,19 @@ resources:
               KeyType: HASH
             Projection:
               ProjectionType: ALL #we what all the attributes to be copied over from the original table to this index table
+    WebSocketConnectionsDynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: id
+            AttributeType: S
+        KeySchema:
+          -
+            AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:provider.environment.CONNECTIONS_TABLE}
     AttachmentsBucket:
       Type: AWS::S3::Bucket
       Properties:
