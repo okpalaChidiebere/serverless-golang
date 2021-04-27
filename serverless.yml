@@ -149,6 +149,10 @@ functions:
                 name: ImageRequest
                 description: Create a new image
   SendUploadNotifications:
+    environment:
+      STAGE: ${self:provider.stage}
+      API_ID:
+        Ref: WebsocketsApi
     handler: bin/sendNotifications
     events:
       - s3:
