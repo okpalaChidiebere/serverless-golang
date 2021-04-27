@@ -302,6 +302,38 @@ resources:
               Action: 's3:GetObject'
               Resource: 'arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*'
         Bucket: !Ref AttachmentsBucket #we specify that our "AttachmentsBucket" has this policy
+    #NOTE: this ES is not production ready. This is good for testing or demo
+    ImagesSearch:
+      Type: AWS::Elasticsearch::Domain
+      Properties:
+        ElasticsearchVersion: '6.3'
+        DomainName: images-search-${self:provider.stage}
+        ElasticsearchClusterConfig:
+          DedicatedMasterEnabled: false
+          InstanceCount: '1'
+          ZoneAwarenessEnabled: false
+          InstanceType: t2.small.elasticsearch
+        EBSOptions: #Elastic Block Store: This defines storage available for our cluster nodes
+          EBSEnabled: true
+          Iops: 0
+          VolumeSize: 10
+          VolumeType: 'gp2'
+        # Required: Enable fine-grained access control or apply a restrictive access policy to our ES domain
+        #https://aws.amazon.com/premiumsupport/knowledge-center/anonymous-not-authorized-elasticsearch/
+        AccessPolicies:
+          Version: '2012-10-17'
+          Statement:
+            -
+              Effect: Allow
+              Principal:
+                AWS: '*'
+              Action: 'es:*'
+              Resource: '*'
+              Condition: 
+                IpAddress:
+                  aws:SourceIP:
+                    -
+                      '70.64.120.73' # allow only request from my home public wifi ip address access to kibana UI
 #  Outputs:
 #     NewOutput:
 #       Description: "Description for the output"
