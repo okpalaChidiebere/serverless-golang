@@ -12,6 +12,7 @@ build: gomodgen
 	env GOOS=linux go build -ldflags="-s -w" -o bin/sendNotifications src/lambda/s3/sendNotifications/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/connect src/lambda/websocket/connect/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/disconnect src/lambda/websocket/disconnect/main.go
+	env GOOS=linux go build -ldflags="-s -w" -o bin/elasticSearchSync src/lambda/dynamoDb/elasticSearchSync/main.go
 
 clean:
 	rm -rf ./bin ./vendor go.sum
