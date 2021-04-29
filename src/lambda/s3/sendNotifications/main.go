@@ -16,6 +16,7 @@ import (
 )
 
 type s3Event events.S3Event
+type SNSEvent events.SNSEvent
 
 type Payload struct {
 	ImageId string `json:"imageId"`
@@ -40,7 +41,26 @@ func init() {
 	apiGateway = apigatewaymanagementapi.New(session, aws.NewConfig().WithEndpoint(apiId+".execute-api.ca-central-1.amazonaws.com/"+stage))
 }
 
-func sendNotificationsHandler(event s3Event) {
+func sendNotificationsHandler(e SNSEvent) error {
+	for _, record := range e.Records {
+		var s3Event s3Event
+		snsRecord := record.SNS
+
+		fmt.Printf("[%s %s] Message = %s \n", record.EventSource, snsRecord.Timestamp, snsRecord.Message)
+
+		//we parse the message to get the actual S3Event
+		if err := json.Unmarshal([]byte(snsRecord.Message), &s3Event); err != nil {
+			log.Println("Failed to unmarshal")
+			return err
+		}
+
+		processS3Event(s3Event)
+	}
+
+	return nil
+}
+
+func processS3Event(event s3Event) {
 	for _, record := range event.Records {
 		s3 := record.S3
 		fmt.Printf("[%s - %s] Bucket = %s, Key = %s \n", record.EventSource, record.EventTime, s3.Bucket.Name, s3.Object.Key)
