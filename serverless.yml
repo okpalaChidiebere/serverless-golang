@@ -64,6 +64,14 @@ provider:
           Action:
             - s3:PutObject
           Resource: "arn:aws:s3:::${self:provider.environment.THUMBNAILS_S3_BUCKET}/*"
+        - Effect: Allow # allow our app to read the secret value from our AWS secretManager
+          Action:
+            - secretsmanager:GetSecretValue
+          Resource: !Ref AwsUserSecretCredentials
+        - Effect: Allow #allow our app to use the KMSKey to decrypet the secret value
+          Action:
+            - kms:Decrypt
+          Resource: !GetAtt KMSKey.Arn
 #    - Effect: "Allow"
 #      Action:
 #        - "s3:ListBucket"
@@ -86,6 +94,7 @@ provider:
     IMAGES_S3_BUCKET: sls-udagram-images-${self:provider.stage}
     CONNECTIONS_TABLE: Connections-${self:provider.stage} #this table will sotre our list of connections
     THUMBNAILS_S3_BUCKET: sls-udagram-thumbnail-${self:provider.stage}
+    AWS_APP_USER_SECRET_ID: Aws-app-user-credentials-${self:provider.stage} # the name of the new AWS resource that will store our secret values
 
 #we can use values from this custom section in other parts of our config file as well
 custom:
@@ -408,6 +417,40 @@ resources:
                   aws:SourceIP:
                     -
                       '70.64.120.73' # allow only request from my home public wifi ip address access to kibana UI
+    #KMSKey used to encrypt our secret
+    KMSKey:
+      Type: AWS::KMS::Key
+      Properties:
+        Description: KMS key to encrypt AWS user credentials secrets
+        KeyPolicy:
+          Version: '2012-10-17'
+          Id: key-default-1
+          Statement:
+            - Sid: Allow administration of the key
+              Effect: Allow
+              Principal:
+                AWS: # we give our root user access to this kms key
+                  Fn::Join:
+                  - ':'
+                  - - 'arn:aws:iam:'
+                    - Ref: AWS::AccountId
+                    - 'root'
+              Action:
+                - 'kms:*'
+              Resource: '*'
+    #KMSAlias is human readable name for our key
+    KMSKeyAlias:
+      Type: AWS::KMS::Alias
+      Properties:
+        AliasName: alias/Aws-app-user-credentials-key-${self:provider.stage}
+        TargetKeyId: !Ref KMSKey
+    #This is where we will store our user credentials secret
+    AwsUserSecretCredentials:
+      Type: AWS::SecretsManager::Secret
+      Properties:
+        Name: ${self:provider.environment.AWS_APP_USER_SECRET_ID}
+        Description: User Credentials Secret. We can get this secret and then sign a http request in our app when we have to
+        KmsKeyId: !Ref KMSKey # we specified that to encrypt the value stored in this secret, it should used the KMSKey resource we created
 #  Outputs:
 #     NewOutput:
 #       Description: "Description for the output"

@@ -11,8 +11,12 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
 	v4 "github.com/aws/aws-sdk-go/aws/signer/v4"
+	"github.com/aws/aws-sdk-go/service/secretsmanager"
 )
 
 type DynamoDBStreamEvent events.DynamoDBEvent
@@ -25,23 +29,101 @@ type Body struct {
 	ImageUrl  string `json:"imageUrl"`
 }
 
+type AWSUser struct {
+	// in the aws secretManager resource, we can have multiple fields which each containing a secret value. We will have just two fields
+	KeyID     string `json:"AWS_ACCESS_KEY_ID"`
+	SecretKey string `json:"AWS_SECRET_ACCESS_KEY"`
+}
+
 var (
-	signer  *v4.Signer
-	url     string
-	esHost  = fmt.Sprintf("https://%s", os.Getenv("ES_ENDPOINT"))
-	index   = "images-index"
-	t       = "images" //the type, as required by ES as the path to your indicies
-	service = "es"
-	region  = "ca-central-1"
+	signer   *v4.Signer
+	url      string
+	esHost   = fmt.Sprintf("https://%s", os.Getenv("ES_ENDPOINT"))
+	index    = "images-index"
+	t        = "images" //the type, as required by ES as the path to your indicies
+	service  = "es"
+	region   = "ca-central-1"
+	sm       *secretsmanager.SecretsManager
+	secretId = os.Getenv("AWS_APP_USER_SECRET_ID")
+	/*
+		The point of this variable is to cache the value of our secret and dont sent requst to
+		secretManager over and over again
+		AWS Lambda may keep our function instance for sometime, then we will reuse this cached secret
+		and we wil save some money by not calling secretManager
+	*/
+	cachedSecretObj *AWSUser
 )
 
 func init() {
 
+	c := make(chan *AWSUser)
+
+	s := session.Must(session.NewSession()) // Use aws sdk
+	sm = secretsmanager.New(s)              // Create SecretsManager client
+
+	go getSecret(c)
+
+	secretObj := <-c
+
 	// Get credentials from environment variables and create the AWS Signature Version 4 signer
-	credentials := credentials.NewStaticCredentials("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "") //TODO: Read the secret from secret manager
+	credentials := credentials.NewStaticCredentials(secretObj.KeyID, secretObj.SecretKey, "")
 	signer = v4.NewSigner(credentials)
 
 	url = esHost + "/" + index + "/" + t + "/"
+}
+
+func getSecret(c chan *AWSUser) {
+
+	//If there is a cached secret already then we just return it
+	if cachedSecretObj != nil {
+		c <- cachedSecretObj
+		return
+	}
+
+	data, err := sm.GetSecretValue(&secretsmanager.GetSecretValueInput{
+		SecretId: aws.String(secretId),
+	})
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case secretsmanager.ErrCodeDecryptionFailure:
+				// Secrets Manager can't decrypt the protected secret text using the provided KMS key.
+				fmt.Println(secretsmanager.ErrCodeDecryptionFailure, aerr.Error())
+
+			case secretsmanager.ErrCodeInternalServiceError:
+				// An error occurred on the server side.
+				fmt.Println(secretsmanager.ErrCodeInternalServiceError, aerr.Error())
+
+			case secretsmanager.ErrCodeInvalidParameterException:
+				// You provided an invalid value for a parameter.
+				fmt.Println(secretsmanager.ErrCodeInvalidParameterException, aerr.Error())
+
+			case secretsmanager.ErrCodeInvalidRequestException:
+				// You provided a parameter value that is not valid for the current state of the resource.
+				fmt.Println(secretsmanager.ErrCodeInvalidRequestException, aerr.Error())
+
+			case secretsmanager.ErrCodeResourceNotFoundException:
+				// We can't find the resource that you asked for.
+				fmt.Println(secretsmanager.ErrCodeResourceNotFoundException, aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			fmt.Println(err.Error())
+		}
+		c <- &AWSUser{}
+		return
+	}
+
+	// Initialize userScret
+	u := &AWSUser{}
+
+	// we parse the *secretstring because it is a JSON object. eg "{\n  \"AWS_ACCESS_KEY_ID\":\"someVale\"\n}\n" needs to be parsed to get the JSON object
+	//NOTE: we dereference the pointer to a string, then get the string so that we can cast it to []byte
+	json.Unmarshal([]byte(*data.SecretString), u)
+
+	cachedSecretObj = u
+	c <- cachedSecretObj
 }
 
 func elasticSearchSyncHandler(e DynamoDBStreamEvent) error {
