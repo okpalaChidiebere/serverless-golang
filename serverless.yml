@@ -97,6 +97,8 @@ package:
     - ./bin/**
 
 functions:
+  Auth:
+    handler: bin/auth0Authorizer
   hello:
     handler: bin/hello
     events:
@@ -123,6 +125,7 @@ functions:
           method: post
           path: groups
           cors: true # properly reply to cores preFligh Request
+          authorizer: Auth
           request:
             # schema used to validae incoming request
             schemas:
@@ -151,6 +154,7 @@ functions:
           method: post
           path: groups/{groupId}/images
           cors: true
+          authorizer: Auth
           request:
             schemas:
               application/json: 
@@ -247,6 +251,16 @@ functions:
 # you can add CloudFormation resource templates here
 resources:
   Resources:
+    GatewayResponseDefault4XX: # we need to set correct cors headers if our custom authorizer denies access to any functions
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,OPTIONS,POST'"
+        ResponseType: DEFAULT_4XX
+        RestApiId:
+          Ref: ApiGatewayRestApi
     GroupsDynamoDBTable:
       Type: AWS::DynamoDB::Table
       Properties:

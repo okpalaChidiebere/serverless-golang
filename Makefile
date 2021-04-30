@@ -14,6 +14,7 @@ build: gomodgen
 	env GOOS=linux go build -ldflags="-s -w" -o bin/disconnect src/lambda/websocket/disconnect/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/elasticSearchSync src/lambda/dynamoDb/elasticSearchSync/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/resizeImage src/lambda/s3/resizeImage/main.go
+	env GOOS=linux go build -ldflags="-s -w" -o bin/auth0Authorizer src/lambda/auth/auth0Authorizer/main.go
 
 clean:
 	rm -rf ./bin ./vendor go.sum
