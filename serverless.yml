@@ -121,14 +121,14 @@ functions:
           path: /world
           method: get
   GetGroups:
-    handler: bin/getGroups
+    handler: bin/src/lambda/http/getGroups
     events:
       - http:
           method: get
           path: groups
           cors: true
   CreateGroup:
-    handler: bin/createGroup
+    handler: bin/src/lambda/http/createGroup
     events:
       - http:
           method: post

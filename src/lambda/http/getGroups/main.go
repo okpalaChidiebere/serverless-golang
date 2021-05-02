@@ -5,58 +5,28 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/udacity/serverless-golang/src/businessLogic/groups"
+	"github.com/udacity/serverless-golang/src/dataLayer/groupsAccess"
+	"github.com/udacity/serverless-golang/src/models"
 )
 
 type Response events.APIGatewayProxyResponse
 
-type Group struct {
-	Id          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
 type GetGroupsResponse struct {
-	Groups []Group `json:"items"`
-}
-
-var ddb *dynamodb.DynamoDB
-var (
-	tableName = aws.String(os.Getenv("GROUPS_TABLE"))
-)
-
-func init() {
-	session := session.Must(session.NewSession()) // Use aws sdk to connect to dynamoDB
-	ddb = dynamodb.New(session)                   // Create DynamoDB client
+	Groups []models.Group `json:"items"`
 }
 
 func GetGroupsHandler(ctx context.Context) (Response, error) {
 	log.Println("GetGroups")
 	var buf bytes.Buffer
 
-	// Read from DynamoDB
-	input := &dynamodb.ScanInput{
-		TableName: tableName,
-	}
-	result, _ := ddb.Scan(input)
+	groupsRepo := groupsAccess.NewDynamoDbRepo()
+	ga := groups.NewGroupAccess(groupsRepo)
 
-	// Construct todos from response
-	var groups []Group
-	for _, i := range result.Items {
-		group := Group{}
-		if err := dynamodbattribute.UnmarshalMap(i, &group); err != nil {
-			log.Println("Failed to unmarshal")
-			log.Println(err)
-		}
-		groups = append(groups, group)
-	}
+	groups := ga.GetAllGroups()
 
 	// Success HTTP response
 	body, err := json.Marshal(&GetGroupsResponse{

@@ -5,38 +5,20 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	uuid "github.com/satori/go.uuid"
+	"github.com/udacity/serverless-golang/src/businessLogic/groups"
+	"github.com/udacity/serverless-golang/src/dataLayer/groupsAccess"
+	"github.com/udacity/serverless-golang/src/models"
+	"github.com/udacity/serverless-golang/src/requests"
 )
 
 type Response events.APIGatewayProxyResponse
 type Request events.APIGatewayProxyRequest
 
-type Group struct {
-	Id          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
 type CreateGroupResponse struct {
-	Group *Group `json:"newItem"`
-}
-
-var ddb *dynamodb.DynamoDB
-var (
-	tableName = aws.String(os.Getenv("GROUPS_TABLE"))
-)
-
-func init() {
-	session := session.Must(session.NewSession()) // Use aws sdk to connect to dynamoDB
-	ddb = dynamodb.New(session)                   // Create DynamoDB client
+	Group models.Group `json:"newItem"`
 }
 
 func createGroupHandler(ctx context.Context, req Request) (Response, error) {
@@ -44,24 +26,18 @@ func createGroupHandler(ctx context.Context, req Request) (Response, error) {
 	log.Printf("Processing Event: %s", e)
 
 	var buf bytes.Buffer
-	id := uuid.Must(uuid.NewV4(), nil).String() //create a new id
 
-	// Initialize group
-	group := &Group{
-		Id: id,
-	}
+	// Initialize CreateGroupRequest
+	group := &requests.CreateGroupRequest{}
+
+	groupsRepo := groupsAccess.NewDynamoDbRepo()
+	ga := groups.NewGroupAccess(groupsRepo)
 
 	// Parse request body
 	json.Unmarshal([]byte(req.Body), group)
 
-	// Write the new item to DynamoDB database
-	item, _ := dynamodbattribute.MarshalMap(group)
-	input := &dynamodb.PutItemInput{
-		Item:      item,
-		TableName: tableName,
-	}
-
-	if _, err := ddb.PutItem(input); err != nil {
+	newItem, err := ga.CreateGroup(group)
+	if err != nil {
 
 		log.Fatalf("Failed to create new item: Error message was %s", err.Error())
 		// Error HTTP response
@@ -77,7 +53,7 @@ func createGroupHandler(ctx context.Context, req Request) (Response, error) {
 	} else {
 		//body, _ := json.Marshal(group)
 		body, _ := json.Marshal(&CreateGroupResponse{
-			group,
+			newItem,
 		})
 		json.HTMLEscape(&buf, body)
 
@@ -89,7 +65,6 @@ func createGroupHandler(ctx context.Context, req Request) (Response, error) {
 				"Access-Control-Allow-Origin": "*",
 			},
 		}
-
 		return resp, nil
 	}
 }
