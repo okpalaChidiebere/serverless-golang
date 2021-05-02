@@ -1,6 +1,8 @@
 package groups
 
 import (
+	"time"
+
 	uuid "github.com/satori/go.uuid"
 	"github.com/udacity/serverless-golang/src/dataLayer/groupsAccess"
 	"github.com/udacity/serverless-golang/src/models"
@@ -34,6 +36,7 @@ func (g *groupAccess) CreateGroup(createReq *requests.CreateGroupRequest) (model
 		Id:          id,
 		Name:        createReq.Name,
 		Description: createReq.Description,
+		Timestamp:   time.Now().String(),
 	}
 
 	return g.groupRepo.CreateGroup(group)

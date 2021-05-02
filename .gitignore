@@ -1,2 +1,5 @@
 # Serverless directories
 .serverless
+
+#serverless package directories fro plugins
+node_modules

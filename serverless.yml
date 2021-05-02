@@ -20,6 +20,9 @@ service: serverless-golang
 # Check out our docs for more details
 frameworkVersion: '2'
 
+plugins:
+  - serverless-plugin-canary-deployments
+
 provider:
   name: aws
   runtime: go1.x
@@ -72,6 +75,11 @@ provider:
           Action:
             - kms:Decrypt
           Resource: !GetAtt KMSKey.Arn
+        - Effect: Allow # canary deployment uses AWS CodeDeploy so we have to give permissions
+          Action:
+            - codedeploy:*
+          Resource:
+            - '*'
 #    - Effect: "Allow"
 #      Action:
 #        - "s3:ListBucket"
@@ -142,6 +150,9 @@ functions:
                 schema: ${file(models/create-group-request.json)} # we read the definition of the schema from the models folder then the json file name
                 name: GroupRequest
                 description: Create a new group
+    deploymentSettings:  # more settings here https://www.serverless.com/plugins/serverless-plugin-canary-deployments
+      type: Linear10PercentEvery1Minute
+      alias: Live
   GetImages:
     handler: bin/getImages
     events:
