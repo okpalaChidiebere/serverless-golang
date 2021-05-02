@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-xray-sdk-go/xray"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -45,6 +46,9 @@ func init() {
 	svc := session.Must(session.NewSession()) // Use aws sdk to connect to dynamoDB
 	ddb = dynamodb.New(svc)                   // Create DynamoDB client
 	s3s = s3.New(svc)                         // Create S3 service client
+
+	xray.AWS(ddb.Client)
+	xray.AWS(s3s.Client)
 }
 
 func createImageHandler(req Request) (Response, error) {

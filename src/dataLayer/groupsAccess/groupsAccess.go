@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/udacity/serverless-golang/src/models"
 )
 
@@ -38,6 +39,7 @@ var (
 func createDynamoDBClient() *dynamodb.DynamoDB {
 	sess := session.Must(session.NewSession()) // Use aws sdk to connect to dynamoDB
 	svc := dynamodb.New(sess)                  // Create DynamoDB client
+	xray.AWS(svc.Client)
 	return svc
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/aws/aws-xray-sdk-go/xray"
 )
 
 type Response events.APIGatewayProxyResponse
@@ -37,6 +38,7 @@ var (
 func init() {
 	svc := session.Must(session.NewSession()) // Use aws sdk to connect to dynamoDB
 	ddb = dynamodb.New(svc)                   // Create DynamoDB client
+	xray.AWS(ddb.Client)
 }
 
 func getImagesHandler(req Request) (Response, error) {

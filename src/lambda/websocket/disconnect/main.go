@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-xray-sdk-go/xray"
 )
 
 type Response events.APIGatewayProxyResponse
@@ -23,6 +24,8 @@ var (
 func init() {
 	session := session.Must(session.NewSession()) // Use aws sdk to connect to dynamoDB
 	ddb = dynamodb.New(session)                   // Create DynamoDB client
+
+	xray.AWS(ddb.Client)
 }
 
 func disconnectHandler(req Request) (Response, error) {

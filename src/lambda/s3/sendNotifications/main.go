@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/apigatewaymanagementapi"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/aws/aws-xray-sdk-go/xray"
 )
 
 type s3Event events.S3Event
@@ -39,6 +40,8 @@ func init() {
 	session := session.Must(session.NewSession()) // Use aws sdk to connect to dynamoDB
 	ddb = dynamodb.New(session)                   // Create DynamoDB client
 	apiGateway = apigatewaymanagementapi.New(session, aws.NewConfig().WithEndpoint(apiId+".execute-api.ca-central-1.amazonaws.com/"+stage))
+
+	xray.AWS(ddb.Client)
 }
 
 func sendNotificationsHandler(e SNSEvent) error {
