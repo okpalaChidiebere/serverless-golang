@@ -115,25 +115,37 @@ custom:
 package:
   patterns:
     - '!./**'
-    - ./bin/**
+  individually: true
 
 functions:
   Auth:
     handler: bin/auth0Authorizer
+    package:
+      patterns:
+        - ./bin/auth0Authorizer
   hello:
     handler: bin/hello
+    package:
+      patterns:
+        - ./bin/hello
     events:
       - httpApi:
           path: /hello
           method: get
   world:
     handler: bin/world
+    package:
+      patterns:
+        - ./bin/world
     events:
       - httpApi:
           path: /world
           method: get
   GetGroups:
     handler: bin/src/lambda/http/getGroups
+    package:
+      patterns:
+        - ./bin/src/lambda/http/getGroups
     events:
       - http:
           method: get
@@ -141,6 +153,9 @@ functions:
           cors: true
   CreateGroup:
     handler: bin/src/lambda/http/createGroup
+    package:
+      patterns:
+        - ./bin/src/lambda/http/createGroup
     events:
       - http:
           method: post
@@ -159,6 +174,9 @@ functions:
       alias: Live
   GetImages:
     handler: bin/getImages
+    package:
+      patterns:
+        - ./bin/getImages
     events:
       - http:
           method: get
@@ -166,6 +184,9 @@ functions:
           cors: true
   GetImage:
     handler: bin/getImage
+    package:
+      patterns:
+        - ./bin/getImage
     events:
       - http:
           method: get
@@ -173,6 +194,9 @@ functions:
           cors: true
   CreateImage:
     handler: bin/createImage
+    package:
+      patterns:
+        - ./bin/createImage
     events:
       - http:
           method: post
@@ -191,6 +215,9 @@ functions:
       API_ID:
         Ref: WebsocketsApi
     handler: bin/sendNotifications
+    package:
+      patterns:
+        - ./bin/sendNotifications
     events:
       - sns: # we now process events from SNS instead of S3 like we had.
           arn:
@@ -203,11 +230,17 @@ functions:
           topicName: ${self:custom.topicName} # the name of the topic this lambda is subscribed to
   ConnectHandler:
     handler: bin/connect
+    package:
+      patterns:
+        - ./bin/connect
     events:
       - websocket:
           route: $connect
   DisconnectHandler:
     handler: bin/disconnect
+    package:
+      patterns:
+        - ./bin/disconnect
     events:
       - websocket:
           route: $disconnect
@@ -215,12 +248,18 @@ functions:
     environment:
       ES_ENDPOINT: !GetAtt ImagesSearch.DomainEndpoint
     handler: bin/elasticSearchSync
+    package:
+      patterns:
+        - ./bin/elasticSearchSync
     events:
       - stream:
           type: dynamodb
           arn: !GetAtt ImagesDynamoDBTable.StreamArn # we are using the getAttribute function from cloud formation
   ResizeImage:
     handler: bin/resizeImage
+    package:
+      patterns:
+        - ./bin/resizeImage
     events: # connect this Lambda function to an SNS
       - sns:
           arn:
