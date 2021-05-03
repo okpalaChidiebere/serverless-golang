@@ -1,5 +1,6 @@
 {
   "devDependencies": {
+    "serverless-iam-roles-per-function": "^3.1.0",
     "serverless-plugin-canary-deployments": "^0.6.0"
   }
 }
