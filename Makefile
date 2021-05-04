@@ -2,8 +2,6 @@
 
 build: gomodgen
 	export GO111MODULE=on
-	env GOOS=linux go build -ldflags="-s -w" -o bin/hello hello/main.go
-	env GOOS=linux go build -ldflags="-s -w" -o bin/world world/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/src/lambda/http/getGroups src/lambda/http/getGroups/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/src/lambda/http/createGroup src/lambda/http/createGroup/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/getImages src/lambda/http/getImages/main.go

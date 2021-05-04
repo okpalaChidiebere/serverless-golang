@@ -113,24 +113,6 @@ functions:
     package:
       patterns:
         - ./bin/auth0Authorizer
-  hello:
-    handler: bin/hello
-    package:
-      patterns:
-        - ./bin/hello
-    events:
-      - httpApi:
-          path: /hello
-          method: get
-  world:
-    handler: bin/world
-    package:
-      patterns:
-        - ./bin/world
-    events:
-      - httpApi:
-          path: /world
-          method: get
   GetGroups:
     handler: bin/src/lambda/http/getGroups
     package:
@@ -159,9 +141,10 @@ functions:
                 schema: ${file(models/create-group-request.json)} # we read the definition of the schema from the models folder then the json file name
                 name: GroupRequest
                 description: Create a new group
-    deploymentSettings:  # more settings here https://www.serverless.com/plugins/serverless-plugin-canary-deployments
-      type: Linear10PercentEvery1Minute
-      alias: Live
+# Uncomment to enable canary deployment for this function
+#    deploymentSettings:  # more settings here https://www.serverless.com/plugins/serverless-plugin-canary-deployments
+#      type: Linear10PercentEvery1Minute
+#      alias: Live
   GetImages:
     handler: bin/getImages
     iamRoleStatements:
