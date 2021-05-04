@@ -1,7 +1,9 @@
 package groupsAccess
 
 import (
+	"encoding/json"
 	"log"
+	"net/url"
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -22,13 +24,17 @@ Alternative to arrange your code; but i think mine is fine
 https://github.com/yuraxdrumz/ports-and-adapters-golang/tree/master/internal/pkg/adapters/out/cartRepository
 */
 type Repository interface {
-	GetAllGroups() []models.Group
+	GetAllGroups(l int64, n string) ([]models.Group, string)
 	CreateGroup(group models.Group) (models.Group, error)
 }
 
 //We can call this an Adapter! It connets to external service
 type GroupDynamoDbRepository struct {
 	client *dynamodb.DynamoDB
+}
+
+type NextKey struct {
+	Id string `json:"id"`
 }
 
 var (
@@ -51,11 +57,36 @@ func NewDynamoDbRepo() Repository {
 }
 
 // Get all the groups users created
-func (r *GroupDynamoDbRepository) GetAllGroups() []models.Group {
+func (r *GroupDynamoDbRepository) GetAllGroups(limit int64, nextKey string) ([]models.Group, string) {
 	// Read from DynamoDB
-	input := &dynamodb.ScanInput{
-		TableName: tableName,
+	var input *dynamodb.ScanInput
+
+	if nextKey == "" {
+		input = &dynamodb.ScanInput{
+			TableName: tableName,
+			Limit:     aws.Int64(limit),
+		}
+	} else {
+		nk := &NextKey{}
+
+		//We decode the key
+		k, _ := url.QueryUnescape(nextKey)
+
+		//parse the key
+		json.Unmarshal([]byte(k), nk)
+
+		input = &dynamodb.ScanInput{
+			TableName: tableName,
+			Limit:     aws.Int64(limit),
+			//ExclusiveStartKey: nk,
+			ExclusiveStartKey: map[string]*dynamodb.AttributeValue{
+				"id": {
+					S: aws.String(nk.Id),
+				},
+			},
+		}
 	}
+
 	result, _ := r.client.Scan(input)
 
 	// Construct todos from response
@@ -69,7 +100,25 @@ func (r *GroupDynamoDbRepository) GetAllGroups() []models.Group {
 		groups = append(groups, group)
 	}
 
-	return groups
+	var nxt NextKey
+	if err := dynamodbattribute.UnmarshalMap(result.LastEvaluatedKey, &nxt); err != nil {
+		log.Println("Failed to unmarshal")
+		log.Println(err)
+	}
+	//log.Printf("LastEvaluatedKey: %s", nxt.Id)
+
+	var finalKeyValue string
+	if nxt.Id == "" {
+
+		//when the next key is null it means there is no more items ot return
+		finalKeyValue = string("null")
+	} else {
+		//fmt.Sprintf("%v", nxt.Id)
+		out, _ := json.Marshal(nxt)
+		finalKeyValue = string(out)
+	}
+
+	return groups, finalKeyValue
 }
 
 // Store creates a new group team in the in images table.

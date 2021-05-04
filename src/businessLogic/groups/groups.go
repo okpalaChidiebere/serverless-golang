@@ -11,7 +11,7 @@ import (
 
 /*Other developers might call this Service*/
 type GroupAccess interface {
-	GetAllGroups() []models.Group
+	GetAllGroups(l int64, n string) ([]models.Group, string)
 	CreateGroup(c *requests.CreateGroupRequest) (models.Group, error)
 }
 
@@ -24,8 +24,8 @@ func NewGroupAccess(r groupsAccess.Repository) GroupAccess {
 	return &groupAccess{r}
 }
 
-func (g *groupAccess) GetAllGroups() []models.Group {
-	return g.groupRepo.GetAllGroups()
+func (g *groupAccess) GetAllGroups(l int64, n string) ([]models.Group, string) {
+	return g.groupRepo.GetAllGroups(l, n)
 }
 
 func (g *groupAccess) CreateGroup(createReq *requests.CreateGroupRequest) (models.Group, error) {
