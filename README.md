@@ -21,6 +21,8 @@ Then after to have your first deploy
 - use the make file to build your project. In the terminal just run `make`. NOTE you probably will have to install some dependencies(like aws-sdk-go, aws-lambda-go, etc) for the make file to successfully generate executable for your project with `go mod init <modulename>` and `go mod tidy`
 - once your executables are generated, run `sls deploy -v` to deploy your project to aws
   All the steps i listed is in this article [https://schadokar.dev/posts/create-a-serverless-application-in-golang-with-aws/](https://schadokar.dev/posts/create-a-serverless-application-in-golang-with-aws/)
+- Make your you have set up [aws-iam-authenticator](https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html). To login a user run `aws configure` and enter user credentials. To confirm the user that you have locally login into your awscli run `aws sts get-caller-identity` in terminal
+- Make sure you have [Serverless](https://www.serverless.com/framework/docs/getting-started) npm installed and or upgraded
 
 # More related articles on bootstraping a sls go template
 
