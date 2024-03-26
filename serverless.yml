@@ -18,7 +18,7 @@ service: serverless-golang
 
 # You can pin your service to only deploy with a specific Serverless version
 # Check out our docs for more details
-frameworkVersion: '2'
+frameworkVersion: "2"
 
 plugins:
   - serverless-plugin-canary-deployments
@@ -29,7 +29,7 @@ provider:
   runtime: go1.x
   lambdaHashingVersion: 20201221
 
-# you can overwrite defaults here
+  # you can overwrite defaults here
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'ca-central-1'}
 
@@ -37,7 +37,7 @@ provider:
     lambda: true # enable tracing for our lambda functions
     apiGateway: true # enable tracing for our APIGateway
 
-# you can add statements to the Lambda function's IAM Role here
+  # you can add statements to the Lambda function's IAM Role here
   iam:
     role:
       statements:
@@ -84,9 +84,9 @@ provider:
           Action:
             - codedeploy:*
           Resource:
-            - '*'
+            - "*"
 
-# you can define service wide environment variables here
+  # you can define service wide environment variables here
   environment:
     GROUPS_TABLE: Groups-${self:provider.stage}
     IMAGES_TABLE: Images-${self:provider.stage}
@@ -104,7 +104,7 @@ custom:
 
 package:
   patterns:
-    - '!./**'
+    - "!./**"
   individually: true
 
 functions:
@@ -137,14 +137,14 @@ functions:
           request:
             # schema used to validae incoming request
             schemas:
-              application/json: 
+              application/json:
                 schema: ${file(models/create-group-request.json)} # we read the definition of the schema from the models folder then the json file name
                 name: GroupRequest
                 description: Create a new group
-# Uncomment to enable canary deployment for this function
-#    deploymentSettings:  # more settings here https://www.serverless.com/plugins/serverless-plugin-canary-deployments
-#      type: Linear10PercentEvery1Minute
-#      alias: Live
+  # Uncomment to enable canary deployment for this function
+  #    deploymentSettings:  # more settings here https://www.serverless.com/plugins/serverless-plugin-canary-deployments
+  #      type: Linear10PercentEvery1Minute
+  #      alias: Live
   GetImages:
     handler: bin/getImages
     iamRoleStatements:
@@ -187,7 +187,7 @@ functions:
           authorizer: Auth
           request:
             schemas:
-              application/json: 
+              application/json:
                 schema: ${file(models/create-image-request.json)}
                 name: ImageRequest
                 description: Create a new image
@@ -204,7 +204,7 @@ functions:
       - sns: # we now process events from SNS instead of S3 like we had.
           arn:
             Fn::Join: #we provice the arn of an SNS topic using the join function
-              - ':'
+              - ":"
               - - arn:aws:sns
                 - Ref: AWS::Region
                 - Ref: AWS::AccountId
@@ -246,7 +246,7 @@ functions:
       - sns:
           arn:
             Fn::Join:
-              - ':'
+              - ":"
               - - arn:aws:sns
                 - Ref: AWS::Region
                 - Ref: AWS::AccountId
@@ -300,20 +300,18 @@ resources:
         GlobalSecondaryIndexes:
           - IndexName: ${self:provider.environment.IMAGE_ID_INDEX}
             KeySchema:
-            - AttributeName: imageId
-              KeyType: HASH
+              - AttributeName: imageId
+                KeyType: HASH
             Projection:
               ProjectionType: ALL #we what all the attributes to be copied over from the original table to this index table
     WebSocketConnectionsDynamoDBTable:
       Type: AWS::DynamoDB::Table
       Properties:
         AttributeDefinitions:
-          -
-            AttributeName: id
+          - AttributeName: id
             AttributeType: S
         KeySchema:
-          -
-            AttributeName: id
+          - AttributeName: id
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
         TableName: ${self:provider.environment.CONNECTIONS_TABLE}
@@ -332,11 +330,10 @@ resources:
               Topic: !Ref ImagesTopic
         CorsConfiguration: #it allows for our bucket to set the right cors headers when a request is sent to our S3 Bucket
           CorsRules:
-            -
-              AllowedOrigins:
-                - '*'
+            - AllowedOrigins:
+                - "*"
               AllowedHeaders:
-                - '*'
+                - "*"
               AllowedMethods:
                 - GET
                 - PUT
@@ -354,9 +351,9 @@ resources:
           Statement:
             - Sid: PublicReadForGetBucketObjects
               Effect: Allow
-              Principal: '*' # anyone
-              Action: 's3:GetObject'
-              Resource: 'arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*'
+              Principal: "*" # '* 'for anyone; for more about security see answer https://stackoverflow.com/questions/58110444/accessing-private-s3-content-only-from-my-application
+              Action: "s3:GetObject"
+              Resource: "arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*"
         Bucket: !Ref AttachmentsBucket #we specify that our "AttachmentsBucket" has this policy
     SNSTopicPolicy: # this policy allows ONLY our S3 Bucket to send events to the ImagesTopic
       Type: AWS::SNS::TopicPolicy
@@ -368,8 +365,7 @@ resources:
               Principal:
                 AWS: "*"
               Action: sns:Publish
-              Resource:
-                !Ref ImagesTopic
+              Resource: !Ref ImagesTopic
               Condition:
                 ArnLike:
                   AWS:SourceArn: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}
@@ -385,41 +381,39 @@ resources:
     ImagesSearch:
       Type: AWS::Elasticsearch::Domain
       Properties:
-        ElasticsearchVersion: '6.3'
+        ElasticsearchVersion: "6.3"
         DomainName: images-search-${self:provider.stage}
         ElasticsearchClusterConfig:
           DedicatedMasterEnabled: false
-          InstanceCount: '1'
+          InstanceCount: "1"
           ZoneAwarenessEnabled: false
           InstanceType: t2.small.elasticsearch
         EBSOptions: #Elastic Block Store: This defines storage available for our cluster nodes
           EBSEnabled: true
           Iops: 0
           VolumeSize: 10
-          VolumeType: 'gp2'
+          VolumeType: "gp2"
         # Required: Enable fine-grained access control or apply a restrictive access policy to our ES domain
         #https://aws.amazon.com/premiumsupport/knowledge-center/anonymous-not-authorized-elasticsearch/
         AccessPolicies:
-          Version: '2012-10-17'
+          Version: "2012-10-17"
           Statement:
-            -
-              Effect: Allow
+            - Effect: Allow
               Principal:
-                AWS: '*'
-              Action: 'es:*'
-              Resource: '*'
-              Condition: 
+                AWS: "*"
+              Action: "es:*"
+              Resource: "*"
+              Condition:
                 IpAddress:
                   aws:SourceIP:
-                    -
-                      '70.64.120.73' # allow only request from my home public wifi ip address access to kibana UI
+                    - "70.64.120.73" # allow only request from my home public wifi ip address access to kibana UI
     #KMSKey used to encrypt our secret
     KMSKey:
       Type: AWS::KMS::Key
       Properties:
         Description: KMS key to encrypt AWS user credentials secrets
         KeyPolicy:
-          Version: '2012-10-17'
+          Version: "2012-10-17"
           Id: key-default-1
           Statement:
             - Sid: Allow administration of the key
@@ -427,13 +421,13 @@ resources:
               Principal:
                 AWS: # we give our root user access to this kms key
                   Fn::Join:
-                  - ':'
-                  - - 'arn:aws:iam:'
-                    - Ref: AWS::AccountId
-                    - 'root'
+                    - ":"
+                    - - "arn:aws:iam:"
+                      - Ref: AWS::AccountId
+                      - "root"
               Action:
-                - 'kms:*'
-              Resource: '*'
+                - "kms:*"
+              Resource: "*"
     #KMSAlias is human readable name for our key
     KMSKeyAlias:
       Type: AWS::KMS::Alias

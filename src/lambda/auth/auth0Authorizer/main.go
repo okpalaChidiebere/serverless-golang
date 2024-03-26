@@ -37,13 +37,47 @@ func auth0AuthorizerHandler(event Event) (Response, error) {
 		Here we are checking if the token is not equal to a mock value we expect then we dont authorize the user
 
 		Ideally this is where we will validate our real token from a third party service like Auth0, whether that token is a valid JWT token or not
-		You basically 'verify' the token with the secretKey that Auth0 gives you
+		There is Symmetric and Asymmetric way
+
+		The Symmetric way is you basically 'verify' the token with the secretKey. For Auth0, the secret is the 'Client Secret' from the dashboard
+		token, err := jwt.Parse('ACCESS_TOKEN', func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHS256); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return 'CLIENT_SECRET', nil
+		})
+
+		The Asymmetric way is basically where you use Auth0 public cert or key to verify the token
+		The key use to sign the accessToken is stored my Auth0; its private. We don't need to store this secret key ourself
+		Eg: Auth0 public cert `curl https://AUTH0_DOMAIN.us.auth0.com/pem | openssl x509 -pubkey -noout`
+		    Auth0 public key can be gotten by making a fetch request to https://AUTH0_DOMAIN.us.auth0.com/.well-known/jwks.json
+
+			The code for verifying jwt signature with pem cert looks like
+			var pubkey = `-----BEGIN PUBLIC KEY-----
+			MIIBIjANB..........
+			-----END PUBLIC KEY-----`
+			mee, err := jwt.ParseRSAPublicKeyFromPEM([]byte(pubkey))
+			if err != nil {
+				log.Println("errorPublic:", err)
+			}
+			token, err := jwt.Parse('ACCESS_TOKEN', func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+				}
+				return mee, nil
+			})
+
+		    The code for verifying jwt signature with jwk can be seen here
+			https://stackoverflow.com/questions/41077953/how-to-verify-jwt-signature-with-jwk-in-go
 
 		These links will help you
-		https://stackoverflow.com/questions/51834234/i-have-a-public-key-and-a-jwt-how-do-i-check-if-its-valid-in-go
-		https://qvault.io/cryptography/how-to-build-jwts-in-go-golang/
+		https://stackoverflow.com/questions/46735347/how-can-i-fetch-a-certificate-from-a-url
+		https://stackoverflow.com/questions/66984610/problem-when-parsing-rs256-public-key-with-dgrijalva-jwt-go-golang-package
+		https://auth0.com/docs/secure/tokens/access-tokens/get-management-api-access-tokens-for-testing  test auth0 token
+		https://community.auth0.com/t/where-is-the-auth0-public-key-to-be-used-in-jwt-io-to-verify-the-signature-of-a-rs256-token/8455
 		https://auth0.com/blog/authentication-in-golang/
-		https://betterprogramming.pub/hands-on-with-jwt-in-golang-8c986d1bb4c0
+		https://stackoverflow.com/questions/51834234/i-have-a-public-key-and-a-jwt-how-do-i-check-if-its-valid-in-go
+		https://brunoscheufler.com/blog/2020-04-11-verifying-asymmetrically-signed-jwts-in-go
 	*/
 	if bearerToken != "123" {
 		log.Println("User was not authorized: Invalid token")

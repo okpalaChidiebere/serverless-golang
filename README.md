@@ -2,7 +2,7 @@
 
 This project was about learning how to learn to write a serverless application in GoLang. Every code writtn here was already done in NodeJs [here](https://github.com/okpalaChidiebere/cloud-developer/tree/master/course-04/exercises/lesson-6/solution). I had to learn to write them in Golang!
 
-To bootstarap an AWS Go Serverless template follow there are three types of template
+To bootstrap an AWS Go Serverless template follow there are three types of template
 
 - aws-go for basic services
 
@@ -12,19 +12,71 @@ To bootstarap an AWS Go Serverless template follow there are three types of temp
 
 I prefer the aws-go-mod template. To get started
 
+- Make sure you have [Serverless](https://www.serverless.com/framework/docs/getting-started) CLI installed or upgraded. To Install or Upgrade CLI run `npm install -g serverless`
 - create folder for your app and name it whatever
 - `cd` into that folder
 - inside that folder run `sls create --template aws-go-mod`
+- **Note** With the deprecation of `go1.x` scheduled for March, 2024, it leaves us the provided family of runtimes as our only option. In our case, we will be using `provided.al2`, which is the latest available runtime, based on Amazon Linux 2023. When using provided runtimes, there is a requirement to name the executable for your function bootstrap. See [here](https://blog.matthiasbruns.com/running-multiple-golang-aws-lambda-functions-on-arm64-with-serverlesscom)and [here](https://pgrzesik.com/posts/golang-serverless-go-plugin/)
 
-Then after to have your first deploy
+```makefile
+build:
+	env GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o bin/hello hello/main.go
+```
 
-- use the make file to build your project. In the terminal just run `make`. NOTE you probably will have to install some dependencies(like aws-sdk-go, aws-lambda-go, etc) for the make file to successfully generate executable for your project with `go mod init <modulename>` and `go mod tidy`
-- once your executables are generated, run `sls deploy -v` to deploy your project to aws
+becomes
+
+```makefile
+build:
+	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o build/hello/bootstrap hello/main.go
+
+zip:
+	zip -j build/hello.zip build/hello/bootstrap
+```
+
+```yml
+provider:
+  name: aws
+  runtime: go1.x
+
+functions:
+  hello:
+    handler: bin/hello
+    events:
+      - httpApi:
+          path: /hello
+          method: get
+```
+
+becomes
+
+```yml
+provider:
+  name: aws
+  runtime: provided.al2
+  architecture: arm64
+
+package:
+  individually: true # <- package each function individually, to prevent file name conflicts
+
+functions:
+  hello:
+    handler: bootstrap # <- the handler name must be bootstrap and in the root of the zip
+    package:
+      artifact: build/hello.zip
+    events:
+      - httpApi:
+          path: /hello
+          method: get
+```
+
+Then after, to have your first deploy to aws
+
+- Make sure you have an aws user logged in in your CLI. Make your you have set up [aws-iam-authenticator](https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html). To login a user run `aws configure` and enter user credentials. To confirm the user that you have locally login into your awscli run `aws sts get-caller-identity` in terminal
+- Use the make file to build your project. In the terminal just run `make`. NOTE you probably will have to install some dependencies(like aws-sdk-go, aws-lambda-go, etc) for the make file to successfully generate executable for your project with `go mod init <modulename>` and `go mod tidy`
+- once your executables are generated, run `sls deploy --verbose` to deploy your project to aws
   All the steps i listed is in this article [https://schadokar.dev/posts/create-a-serverless-application-in-golang-with-aws/](https://schadokar.dev/posts/create-a-serverless-application-in-golang-with-aws/)
-- Make your you have set up [aws-iam-authenticator](https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html). To login a user run `aws configure` and enter user credentials. To confirm the user that you have locally login into your awscli run `aws sts get-caller-identity` in terminal
-- Make sure you have [Serverless](https://www.serverless.com/framework/docs/getting-started) npm installed and or upgraded
 
-# More related articles on bootstraping a sls go template
+# More related articles on bootstrapping a sls go template
 
 [https://tpaschalis.github.io/golang-aws-lambda-getting-started/](https://tpaschalis.github.io/golang-aws-lambda-getting-started/)
 [https://www.softkraft.co/aws-lambda-in-golang/](https://www.softkraft.co/aws-lambda-in-golang/)
@@ -74,7 +126,10 @@ PhotoShop library in go
 - These differnt stages will use different versions of our Lambda functions. The dev will have the most recent version and prod will have a older version. Eg prod will have version 4, staging version 7 and prod version 10
 - I did not implement this, but this is the ideal way to stage your gateway in aws. I will look for a way to do this with serverless framework
 
-Keep an EYE out for APIGatway [Version2](https://www.serverless.com/framework/docs/providers/aws/events/http-api/)
+# HTTP API (API Gateway v2)
+
+- v1, also called REST API which is what we used for this project
+- v2, also called [HTTP API](https://www.serverless.com/framework/docs/providers/aws/events/http-api/), which is faster and cheaper than v1. Read the full comparison [in the AWS documentation](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html).
 
 - Why you may need to [https://www.serverless.com/blog/api-gateway-v2-http-apis](https://www.serverless.com/blog/api-gateway-v2-http-apis)
 
@@ -82,4 +137,44 @@ Keep an EYE out for APIGatway [Version2](https://www.serverless.com/framework/do
 
 - [https://www.serverless.com/aws-http-apis](https://www.serverless.com/aws-http-apis)
 
+- More about CORS errors [here](https://repost.aws/knowledge-center/api-gateway-cors-errors) and [here](https://www.stackhawk.com/blog/golang-cors-guide-what-it-is-and-how-to-enable-it/)
+
 A refresher for common basic goLang programming techniques for you [here](https://www.bogotobogo.com/GoLang/GoLang_Modules_1_Creating_a_new_module.php)
+
+# Auth0 Authentication and jwt token helpful links
+
+- [Implementing refresh token flow in an expo react native app with expo-auth-session and Auth0](https://medium.com/@danbowden/implementing-refresh-token-flow-in-an-expo-react-native-app-with-expo-auth-session-and-auth0-82eb6d0dea35) and [here](https://gist.github.com/jdthorpe/aaa0d31a598f299a57e5c76535bf0690)
+- [Auth0 discovery url](https://community.auth0.com/t/openid-discovery-url/19536)
+- Get test accessToken. [see](https://auth0.com/docs/secure/tokens/access-tokens/get-management-api-access-tokens-for-testing)
+- AccessToken claims. [See](https://auth0.com/docs/secure/tokens/access-tokens)
+- [Auth0 Public Key for token verifications (Asymmetric)](https://community.auth0.com/t/how-to-get-public-key-pem-from-jwks-json/60355/6)
+- [Client Secret for token verifications (Symmetric)](https://auth0.com/docs/get-started/tenant-settings/signing-keys/view-signing-certificates#if-using-the-hs256-signing-algorithm)
+- [Public key for Asymmetric token verification](https://auth0.com/docs/secure/tokens/json-web-tokens/validate-json-web-tokens#verify-rs256-signed-tokens)
+- Parse jwt token without verification to get claims. see [here](https://stackoverflow.com/questions/45405626/how-to-decode-a-jwt-token-in-go) and [here](https://stackoverflow.com/questions/55698770/decode-jwt-without-validation-and-find-scope)
+- [Lambda Authorizer caching](https://stackoverflow.com/questions/50331588/aws-api-gateway-custom-authorizer-strange-showing-error/56119016#56119016)
+
+# Auth0 and API authorization
+
+Authorization is basically making sure that a user that invoke an endpoint has the permission to assess that resource. With Auth0 you can achieve this using Actions. Follow the steps below
+
+- Create an API Audience. Go to to Dashboard > Applications > APIs. You must provide this audience as params following auth0 sign in otherwise verifying the access token following the Auth0 verification process will fail. As you create the Audience, create all the permissions for the API client
+- Create the role(s) at Go to to Dashboard > User management > Roles. While creating the role, you will assign the permissions you want the role to have from the API audience you created.
+- You can manually assign role to user(s). You can see all users at Dashboard > User management > Users
+- For cases where you want to assign default role to users when an Auth0 event(flow) happens like Login/Post signUp which is a common use case, you will need to create an action. Go to Dashboard > Actions > Library and click Create Action / Build from scratch. When you are done creating the action, then you can hook the action up into a flow (Dashboard > Actions > Flows)
+- **Note** It is important that the client you will be using to assign role to users has the correct permission scope assign to then in the auth0 dashboard. See. The minimum permission needed for this is `and`
+- [https://auth0.com/blog/assign-default-role-on-sign-up-with-actions/](https://auth0.com/blog/assign-default-role-on-sign-up-with-actions/)
+- [https://auth0.com/docs/customize/actions/flows-and-triggers](https://auth0.com/docs/customize/actions/flows-and-triggers)
+- [https://www.youtube.com/watch?v=CZxfMD8lXg8](https://www.youtube.com/watch?v=CZxfMD8lXg8)
+- [Scopes and Claims](https://auth0.com/docs/get-started/apis/scopes/sample-use-cases-scopes-and-claims)
+- Enable Role-Based Access Control for APIs. See [Here](https://auth0.com/docs/get-started/apis/enable-role-based-access-control-for-apis), [here](https://community.auth0.com/t/how-to-get-permissions-for-user/26993/10) and [here](https://community.auth0.com/t/get-auth0-management-api-invalid-token-error/83649/8)
+- [https://community.auth0.com/t/how-to-get-permissions-for-user/26993/13](https://community.auth0.com/t/how-to-get-permissions-for-user/26993/13)
+
+## Auth0 APis front-end useful links
+
+- [Prompt parameter](https://community.auth0.com/t/authorizes-prompt-parameter-not-documented/40340/2)
+
+## DynamoDB Links
+
+- For TTL, see [here](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/time-to-live-ttl-how-to.html) and [here](https://dynobase.dev/dynamodb-ttl/)
+- [https://www.bmc.com/blogs/dynamodb-advanced-queries/](https://www.bmc.com/blogs/dynamodb-advanced-queries/)
+- [https://www.dynamodbguide.com/working-with-multiple-items/](https://www.dynamodbguide.com/working-with-multiple-items/)
