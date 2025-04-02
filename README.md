@@ -16,7 +16,7 @@ I prefer the aws-go-mod template. To get started
 - create folder for your app and name it whatever
 - `cd` into that folder
 - inside that folder run `sls create --template aws-go-mod`
-- **Note** With the deprecation of `go1.x` scheduled for March, 2024, it leaves us the provided family of runtimes as our only option. In our case, we will be using `provided.al2`, which is the latest available runtime, based on Amazon Linux 2023. When using provided runtimes, there is a requirement to name the executable for your function bootstrap. See [here](https://blog.matthiasbruns.com/running-multiple-golang-aws-lambda-functions-on-arm64-with-serverlesscom)and [here](https://pgrzesik.com/posts/golang-serverless-go-plugin/)
+- **Note** With the deprecation of `go1.x` scheduled for March, 2024, it leaves us the provided family of runtimes as our only option. In our case, we will be using `provided.al2`, which is the latest available runtime, based on Amazon Linux 2023. When using provided runtimes, there is a requirement to name the executable for your function bootstrap. See [here](https://blog.matthiasbruns.com/running-multiple-golang-aws-lambda-functions-on-arm64-with-serverlesscom),and [here](https://pgrzesik.com/posts/golang-serverless-go-plugin/). Another article ARM64 lambda golang [here](https://blog.matthiasbruns.com/running-multiple-golang-aws-lambda-functions-on-arm64-with-serverlesscom)
 
 ```makefile
 build:
@@ -53,7 +53,7 @@ becomes
 provider:
   name: aws
   runtime: provided.al2
-  architecture: arm64
+  architecture: arm64 # Lambda binary must be is compiled for arm64 in your Makefile and not amd64
 
 package:
   individually: true # <- package each function individually, to prevent file name conflicts
